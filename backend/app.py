@@ -121,7 +121,7 @@ def buscar_sentencias(
     total_count = cur.fetchone()[0]
 
     select_query = f"""
-        SELECT DISTINCT s.ndetalle, s.url, s.clasificacion
+        SELECT DISTINCT s.ndetalle, s.url, s.clasificacion, s.fecha_resolucion
         FROM {from_clause}
         {where_sql}
         ORDER BY s.fecha_resolucion DESC
