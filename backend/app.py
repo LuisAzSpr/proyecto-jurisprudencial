@@ -121,7 +121,7 @@ def buscar_sentencias(
     total_count = cur.fetchone()[0]
 
     select_query = f"""
-        SELECT DISTINCT s.ndetalle, s.url
+        SELECT DISTINCT s.ndetalle, s.url, s.clasificacion
         FROM {from_clause}
         {where_sql}
         ORDER BY s.ndetalle
@@ -129,7 +129,10 @@ def buscar_sentencias(
     """
     cur.execute(select_query, tuple(params + [limit, offset]))
     filas = cur.fetchall()
-    items = {row[0]: row[1] for row in filas}
+    items = [
+        {"ndetalle": row[0], "url": row[1], "clasificacion": row[2]}
+        for row in filas
+    ]
 
     cur.close()
     conn.close()

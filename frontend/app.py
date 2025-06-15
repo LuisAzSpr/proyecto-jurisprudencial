@@ -85,8 +85,12 @@ if "pagina_actual" in st.session_state:
     if total == 0:
         st.warning("No se encontraron PDF con esos filtros.")
     else:
-        tabla_md = "| pdf | Descargar |\n| ---- | -------- |\n"
-        for nd, ruta in items.items():
+        tabla_md = "| PDF | Clasificación | Descargar |\n| ---- | -------------- | -------- |\n"
+        for item in items:
+            nd = item.get("ndetalle")
+            ruta = item.get("url")
+            clasificacion = item.get("clasificacion", "N/A")
+
             url_pdf = None
             try:
                 d = requests.get(f"{API_BASE_URL}/descargar/{nd}")
@@ -94,9 +98,11 @@ if "pagina_actual" in st.session_state:
                     url_pdf = d.json().get("url")
             except:
                 pass
+
             link = f"[📄 Descargar]({url_pdf})" if url_pdf else "Error al generar URL"
             nombre = ruta.split("/")[-1].split(",")[0] + ".pdf" if ruta else "None"
-            tabla_md += f"| {nombre} | {link} |\n"
+
+            tabla_md += f"| {nombre} | {clasificacion} | {link} |\n"
 
         st.markdown(f"#### Página {pagina} de {((total - 1) // limite) + 1}")
         st.markdown(tabla_md, unsafe_allow_html=True)
