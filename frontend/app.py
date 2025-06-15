@@ -41,11 +41,27 @@ with col4:
 
 filtro_clasificacion = st.checkbox("Solo sentencias")
 
+# Inicializa el estado de la página si aún no existe
+if "pagina_actual" not in st.session_state:
+    st.session_state.pagina_actual = 1
+
+# Botón para activar búsqueda
 if st.button("Buscar"):
+    st.session_state.pagina_actual = 1  # Reinicia a la primera página
+
+# Si ya se han definido las fechas (ya sea al iniciar o por búsqueda)
+if "pagina_actual" in st.session_state:
+    pagina = st.session_state.pagina_actual
+    limite = 100
+    offset = (pagina - 1) * limite
+
     params = {
         "fecha_desde": fecha_desde.isoformat(),
-        "fecha_hasta": fecha_hasta.isoformat()
+        "fecha_hasta": fecha_hasta.isoformat(),
+        "limit": limite,
+        "offset": offset
     }
+
     if sel_organo_det != "Todos":
         params["organo_detalle"] = sel_organo_det
     if sel_juez != "Todos":
@@ -82,5 +98,17 @@ if st.button("Buscar"):
             nombre = ruta.split("/")[-1].split(",")[0] + ".pdf" if ruta else "None"
             tabla_md += f"| {nombre} | {link} |\n"
 
-        st.markdown("#### Primeros 100 resultados:")
+        st.markdown(f"#### Página {pagina} de {((total - 1) // limite) + 1}")
         st.markdown(tabla_md, unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("⬅ Página anterior") and pagina > 1:
+                st.session_state.pagina_actual -= 1
+                st.experimental_rerun()
+        with col2:
+            st.markdown(f"<center><b>Página {pagina}</b></center>", unsafe_allow_html=True)
+        with col3:
+            if st.button("Página siguiente ➡") and pagina * limite < total:
+                st.session_state.pagina_actual += 1
+                st.experimental_rerun()
