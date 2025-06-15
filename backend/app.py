@@ -124,7 +124,7 @@ def buscar_sentencias(
         SELECT DISTINCT s.ndetalle, s.url, s.clasificacion
         FROM {from_clause}
         {where_sql}
-        ORDER BY s.ndetalle
+        ORDER BY s.fecha_resolucion DESC
         LIMIT %s OFFSET %s;
     """
     cur.execute(select_query, tuple(params + [limit, offset]))
