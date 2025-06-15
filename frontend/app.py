@@ -82,5 +82,5 @@ if st.button("Buscar"):
             nombre = ruta.split("/")[-1].split(",")[0] + ".pdf" if ruta else "None"
             tabla_md += f"| {nombre} | {link} |\n"
 
-        st.markdown("#### Primeros 10 resultados:")
+        st.markdown("#### Primeros 100 resultados:")
         st.markdown(tabla_md, unsafe_allow_html=True)

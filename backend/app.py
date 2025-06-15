@@ -81,7 +81,7 @@ def buscar_sentencias(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
     clasificacion_fundada: Optional[bool] = False,
-    limit: int = 10,
+    limit: int = 100,
     offset: int = 0
 ):
     conn = get_db_connection()
@@ -138,3 +138,4 @@ def buscar_sentencias(
         "total_count": total_count,
         "items": items
     }
+
