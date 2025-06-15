@@ -105,10 +105,10 @@ if "pagina_actual" in st.session_state:
         with col1:
             if st.button("⬅ Página anterior") and pagina > 1:
                 st.session_state.pagina_actual -= 1
-                st.experimental_rerun()
+                st.rerun()
         with col2:
             st.markdown(f"<center><b>Página {pagina}</b></center>", unsafe_allow_html=True)
         with col3:
             if st.button("Página siguiente ➡") and pagina * limite < total:
                 st.session_state.pagina_actual += 1
-                st.experimental_rerun()
+                st.rerun()
