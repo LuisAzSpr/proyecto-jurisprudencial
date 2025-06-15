@@ -16,7 +16,6 @@ credentials = service_account.Credentials.from_service_account_file('credenciale
 storage_client = storage.Client(credentials=credentials)
 bucket = storage_client.bucket("automatizacion-casillero")
 
-# Función auxiliar para abrir conexión a PostgreSQL
 def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("DB-HOST"),
@@ -55,12 +54,6 @@ def obtener_filtros():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT DISTINCT codigo_recurso FROM sentencias_y_autos WHERE codigo_recurso IS NOT NULL;")
-    lista_recurso = [r[0] for r in cur.fetchall()]
-
-    cur.execute("SELECT DISTINCT especialidad_expe FROM sentencias_y_autos WHERE especialidad_expe IS NOT NULL;")
-    lista_espe = [r[0] for r in cur.fetchall()]
-
     cur.execute("SELECT DISTINCT organo_detalle FROM sentencias_y_autos WHERE organo_detalle IS NOT NULL;")
     lista_organo = [r[0] for r in cur.fetchall()]
 
@@ -76,8 +69,6 @@ def obtener_filtros():
     cur.close()
     conn.close()
     return {
-        "codigo_recurso": sorted(lista_recurso),
-        "especialidad_expe": sorted(lista_espe),
         "organo_detalle": sorted(lista_organo),
         "nombre_juez": sorted(lista_juez)
     }
@@ -85,8 +76,6 @@ def obtener_filtros():
 
 @app.get("/search")
 def buscar_sentencias(
-    codigo_recurso: Optional[str] = Query(None),
-    especialidad_expe: Optional[str] = Query(None),
     organo_detalle: Optional[str] = Query(None),
     nombre_juez: Optional[str] = Query(None),
     fecha_desde: Optional[str] = Query(None),
@@ -101,12 +90,6 @@ def buscar_sentencias(
     filtros_where = []
     params: List = []
 
-    if codigo_recurso:
-        filtros_where.append("s.codigo_recurso = %s")
-        params.append(codigo_recurso)
-    if especialidad_expe:
-        filtros_where.append("s.especialidad_expe = %s")
-        params.append(especialidad_expe)
     if organo_detalle:
         filtros_where.append("s.organo_detalle = %s")
         params.append(organo_detalle)
@@ -129,7 +112,6 @@ def buscar_sentencias(
     if filtros_where:
         where_sql = "WHERE " + " AND ".join(filtros_where)
 
-    # Conteo total
     count_query = f"""
         SELECT COUNT(DISTINCT s.ndetalle)
         FROM {from_clause}
@@ -138,7 +120,6 @@ def buscar_sentencias(
     cur.execute(count_query, tuple(params))
     total_count = cur.fetchone()[0]
 
-    # Resultados paginados
     select_query = f"""
         SELECT DISTINCT s.ndetalle, s.url
         FROM {from_clause}

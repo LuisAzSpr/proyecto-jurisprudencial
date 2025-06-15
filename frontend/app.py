@@ -18,45 +18,38 @@ def cargar_filtros():
     except Exception as e:
         st.error(f"Error al cargar filtros: {e}")
         return {
-            "codigo_recurso": [], "especialidad_expe": [],
             "organo_detalle": [], "nombre_juez": []
         }
 
 filtros = cargar_filtros()
 def opciones_con_todos(lista): return ["Todos"] + lista
 
-opts_recurso = opciones_con_todos(filtros["codigo_recurso"])
-opts_especialidad = opciones_con_todos(filtros["especialidad_expe"])
 opts_organo_det = opciones_con_todos(filtros["organo_detalle"])
 opts_juez = opciones_con_todos(filtros["nombre_juez"])
 
 # Diseño de filtros
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    sel_recurso = st.selectbox("Código Recurso", opts_recurso)
+    fecha_desde = st.date_input("Fecha Desde")
 with col2:
-    sel_especialidad = st.selectbox("Especialidad Expediente", opts_especialidad)
+    fecha_hasta = st.date_input("Fecha Hasta")
 with col3:
     sel_organo_det = st.selectbox("Órgano Detalle", opts_organo_det)
 with col4:
     sel_juez = st.selectbox("Nombre Juez", opts_juez)
-with col5:
-    filtro_clasificacion = st.checkbox("Solo sentencias fundadas/infundadas")
 
-# Filtros de fecha
-fecha_desde = st.date_input("Fecha Desde")
-fecha_hasta = st.date_input("Fecha Hasta")
+filtro_clasificacion = st.checkbox("Solo sentencias")
 
 if st.button("Buscar"):
     params = {
         "fecha_desde": fecha_desde.isoformat(),
         "fecha_hasta": fecha_hasta.isoformat()
     }
-    if sel_recurso != "Todos": params["codigo_recurso"] = sel_recurso
-    if sel_especialidad != "Todos": params["especialidad_expe"] = sel_especialidad
-    if sel_organo_det != "Todos": params["organo_detalle"] = sel_organo_det
-    if sel_juez != "Todos": params["nombre_juez"] = sel_juez
+    if sel_organo_det != "Todos":
+        params["organo_detalle"] = sel_organo_det
+    if sel_juez != "Todos":
+        params["nombre_juez"] = sel_juez
     if filtro_clasificacion:
         params["clasificacion_fundada"] = filtro_clasificacion
 
