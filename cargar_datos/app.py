@@ -242,10 +242,10 @@ def enrutar_pdfs():
         if i % 100 == 0:
             conn.commit()
 
-        # Guardar cambios finales
-        conn.commit()
-        cur.close()
-        conn.close()
+    # Guardar cambios finales
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 # -------------------------------------------------------------------------------------
