@@ -5,7 +5,7 @@ import psycopg2
 import os
 import json
 import re
-import tqdm
+from tqdm import tqdm
 import logging
 
 load_dotenv()
