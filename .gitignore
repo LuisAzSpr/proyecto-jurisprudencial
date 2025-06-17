@@ -1,3 +1,4 @@
 credenciales.json
 backend/.env
 frontend/.env
+cargar_datos/.env

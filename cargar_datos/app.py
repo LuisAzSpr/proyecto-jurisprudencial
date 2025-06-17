@@ -1,0 +1,245 @@
+from dotenv import load_dotenv
+from google.oauth2 import service_account
+from google.cloud import storage
+import psycopg2
+import os
+import json
+import re
+import tqdm
+
+load_dotenv()
+
+# --------------------- Conexiones --------------------------
+# -----------------------------------------------------
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("DB-HOST"),
+        port=os.getenv("DB-PORT"),
+        dbname=os.getenv("DB-NAME"),
+        user=os.getenv("USERNAME-DB"),
+        password=os.getenv("PASSWORD-DB")
+    )
+
+credentials = service_account.Credentials.from_service_account_file('credenciales.json')
+storage_client = storage.Client(credentials=credentials)
+bucket = storage_client.bucket("automatizacion-casillero")
+
+# -----------------------------------------------------
+
+
+# ------------------------- UTILS ---------------------
+# -----------------------------------------------------
+
+def obtener_fecha_mas_reciente(prefijo_folder):
+    try:
+        blobs = bucket.list_blobs(prefix=prefijo_folder)
+
+        # Filtramos y obtenemos la fecha de actualización más reciente
+        fechas = [(blob.name, blob.updated) for blob in blobs if not blob.name.endswith('/')]
+        if not fechas:
+            print(f"No se encontraron archivos en el folder: {prefijo_folder}")
+            return None
+
+        archivo_mas_reciente = max(fechas, key=lambda x: x[1])
+        print(f"Archivo más reciente: {archivo_mas_reciente[0]}, actualizado en: {archivo_mas_reciente[1]}")
+        return archivo_mas_reciente
+
+    except Exception as e:
+        print(f"Error al obtener la fecha más reciente en {prefijo_folder}: {e}")
+        raise
+
+def procesar_archivo_json(lista):
+    lista_data = []
+    for x in lista:
+        lista_data += x['lista']
+    lista_norep = eliminar_diccionarios_repetidos(lista_data)
+    return lista_norep
+
+def eliminar_diccionarios_repetidos(lista):
+    vistos = set()
+    resultado = []
+    for dic in lista:
+        clave = json.dumps(dic, sort_keys=True)  # convierte a string con claves ordenadas
+        if clave not in vistos:
+            vistos.add(clave)
+            resultado.append(dic)
+    return resultado
+
+def leer_json(nombre_remoto_json):
+    try:
+        blob = bucket.blob(nombre_remoto_json)
+        contenido = blob.download_as_text()
+        data = json.loads(contenido)
+        return data
+    except Exception as e:
+        print(f"No se pudo leer el JSON desde el bucket: {e}")
+        raise
+
+# -----------------------------------------------------
+
+
+# ----------------- CARGAR JSON A BASE DE DATOS -------------------------
+# ---------------------------------------------------------------------
+
+def filtrar_precargado_json():
+
+    # 0. obtenemos el archivo json mas reciente  y lo leemos
+    archivo, _ = obtener_fecha_mas_reciente('data')
+    json_ids = leer_json(archivo)
+
+    # 1. Leer lista de ndetalles ya existentes
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT ndetalle FROM sentencias_y_autos;")
+    pdfs_ya_subidos = {row[0] for row in cur.fetchall()}
+
+    # 2. preprocesamos, eliminamos los repetidos, etc.
+    json_ids_procesados = procesar_archivo_json(json_ids)
+    json_filtrado = [item for item in json_ids_procesados if str(item.get("ndetalle")) not in pdfs_ya_subidos]
+    return json_filtrado
+
+def cargar_json_a_database(data_filtrada):
+
+    # creamos una conexion
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # comenzamos a insetar los campos del json en la base de datos
+    for i,item in enumerate(data_filtrada):
+        print(f"[INFO] Procesadas {i}/{len(data_filtrada)} sentencias -> {i}")
+
+        # Insertar en sentencias_y_autos
+        cur.execute("""
+            INSERT INTO sentencias_y_autos (
+                ndetalle, acto_procesal, anio_expe, anio_recurso_expe,
+                anio_resolucion, codigo_distrito, codigo_organo, codigo_recurso,
+                desc_documento, desc_tipo_recurso_expe, distrito_judicial_expe,
+                especialidad_expe, fecha_ingreso_expe, fecha_resolucion,
+                instancia_detalle, instancia_expe, juez_firma_resolucion,
+                mostrar_botones, nexpedeinte, norma_derecho_interno_expe,
+                numero_en_letras, numero_recurso_expe, numero_resolucion,
+                organo_detalle, organo_expe, proceso_exp, sede_detalle,
+                sumilla, tipo_documento, xformato_expe, url, clasificacion,
+                subclasificacion, fecha_real
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s)
+            ON CONFLICT (ndetalle) DO NOTHING;
+        """, (
+            item.get("ndetalle"),
+            item.get("actoProcesal"),
+            item.get("anioExpe"),
+            item.get("anioRecursoExpe"),
+            item.get("anioResolucion"),
+            item.get("codigoDistrito"),
+            item.get("codigoOrgano"),
+            item.get("codigoRecurso"),
+            item.get("descDocumento"),
+            item.get("descTipoRecursoExpe"),
+            item.get("distritoJudicialExpe"),
+            item.get("especialidadExpe"),
+            item.get("fechaIngresoExpe"),
+            item.get("fechaResolucion"),
+            item.get("instanciaDetalle"),
+            item.get("instanciaExpe"),
+            item.get("juezFirmaResolucion"),
+            item.get("mostrarBotones"),
+            item.get("nexpediente"),
+            item.get("normaDerechoInternoExpe"),
+            item.get("numeroEnLetras"),
+            item.get("numeroRecursoExpe"),
+            item.get("numeroResolucion"),
+            item.get("organoDetalle"),
+            item.get("organoExpe"),
+            item.get("procesoExp"),
+            item.get("sedeDetalle"),
+            item.get("sumilla"),
+            item.get("tipoDocumento"),
+            item.get("xformatoExpe"),
+            item.get("url"),
+            item.get("clasificacion"),
+            item.get("subclasificacion"),
+            item.get("fecha_real")
+        ))
+
+        # Insertar jueces y la relación
+        for juez in item.get("magistrados", []):
+            codigo = juez.get("codigo")
+            nombre = juez.get("valor")
+            if codigo and nombre:
+                # Insertar juez
+                cur.execute("""
+                    INSERT INTO jueces (codigo, nombre_juez)
+                    VALUES (%s, %s)
+                    ON CONFLICT (codigo) DO NOTHING;
+                """, (codigo, nombre))
+
+                # Insertar relación sentencia-juez
+                cur.execute("""
+                    INSERT INTO sentencias_jueces (ndetalle, codigo)
+                    VALUES (%s, %s)
+                    ON CONFLICT DO NOTHING;
+                """, (item["ndetalle"], codigo))
+
+        if i % 20 == 0:
+            conn.commit()
+
+# ---------------------------------------------------------------------
+
+
+# ----------------- CARGAR RUTA BUCKET A URL EN BASE DE DATOS -------------------------
+# -------------------------------------------------------------------------------------
+
+def enrutar_pdfs():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    prefix = "descargas_pdf/"
+    blobs = list(bucket.list_blobs(prefix=prefix))  # Convertir a lista para contar
+
+    # Regex para extraer el ID del nombre del archivo
+    pattern = r"id=(\d+)\.pdf$"
+
+    print("Empezando recorrido")
+    # Recorremos todos los PDFs con tqdm
+    for i, blob in enumerate(tqdm(blobs, desc="Procesando archivos PDF", unit="archivo")):
+        filename = blob.name  # Ej: descargas_pdf/Resolucion_S_N_2024-01-04...,id=1006968812.pdf
+        match = re.search(pattern, filename)
+        print(f"Nombre de archivo {filename}")
+
+        if match:
+            ndetalle = match.group(1)
+
+            # Verificar si el registro existe y aún no tiene URL
+            cur.execute("SELECT url FROM sentencias_y_autos WHERE ndetalle = %s", (ndetalle,))
+            result = cur.fetchone()
+
+            if result is not None and result[0] is not None:
+
+                # Actualizar la fila
+                cur.execute(
+                    "UPDATE sentencias_y_autos SET url = %s WHERE ndetalle = %s",
+                    (filename, ndetalle)
+                )
+
+        if i % 100 == 0:
+            conn.commit()
+
+        # Guardar cambios finales
+        conn.commit()
+        cur.close()
+        conn.close()
+
+
+# -------------------------------------------------------------------------------------
+
+
+def main():
+
+    # 1. cargar jsons a base de datos
+    json_filtrados = filtrar_precargado_json()
+    cargar_json_a_database(json_filtrados)
+
+    # 2. cargar ruta del bucket al campo "url" de la base de datos.
+    enrutar_pdfs()
+

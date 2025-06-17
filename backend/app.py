@@ -42,7 +42,7 @@ def generar_url(ndetalle: str):
 
     signed_url = blob.generate_signed_url(
         version="v4",
-        expiration=timedelta(minutes=15),
+        expiration=timedelta(minutes=180),
         method="GET"
     )
 

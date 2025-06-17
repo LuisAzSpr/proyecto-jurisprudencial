@@ -1,0 +1,5 @@
+python-dotenv
+google-auth
+google-cloud-storage
+psycopg2-binary
+tqdm
