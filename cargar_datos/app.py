@@ -222,7 +222,7 @@ def enrutar_pdfs():
     for i, blob in enumerate(tqdm(blobs, desc="Procesando archivos PDF", unit="archivo")):
         filename = blob.name  # Ej: descargas_pdf/Resolucion_S_N_2024-01-04...,id=1006968812.pdf
         match = re.search(pattern, filename)
-        logger.info(f"Nombre de archivo {filename}")
+        #logger.info(f"Nombre de archivo {filename}")
 
         if match:
             ndetalle = match.group(1)
