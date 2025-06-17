@@ -6,11 +6,28 @@ import os
 import json
 import re
 import tqdm
+import logging
 
 load_dotenv()
 
+
 # --------------------- Conexiones --------------------------
 # -----------------------------------------------------
+def configurar_logger():
+    logger = logging.getLogger()
+    if not logger.hasHandlers():  # Evitar agregar múltiples handlers
+        logging.basicConfig(
+            level=logging.INFO,  # Cambia esto a INFO para ocultar los DEBUG
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.StreamHandler(),  # Salida estándar
+                logging.FileHandler("logs.log", mode="a")  # Archivo de logs
+            ]
+        )
+    return logger
+
+logger = configurar_logger()
+
 
 def get_db_connection():
     return psycopg2.connect(
@@ -38,15 +55,15 @@ def obtener_fecha_mas_reciente(prefijo_folder):
         # Filtramos y obtenemos la fecha de actualización más reciente
         fechas = [(blob.name, blob.updated) for blob in blobs if not blob.name.endswith('/')]
         if not fechas:
-            print(f"No se encontraron archivos en el folder: {prefijo_folder}")
+            logger.info(f"No se encontraron archivos en el folder: {prefijo_folder}")
             return None
 
         archivo_mas_reciente = max(fechas, key=lambda x: x[1])
-        print(f"Archivo más reciente: {archivo_mas_reciente[0]}, actualizado en: {archivo_mas_reciente[1]}")
+        logger.info(f"Archivo más reciente: {archivo_mas_reciente[0]}, actualizado en: {archivo_mas_reciente[1]}")
         return archivo_mas_reciente
 
     except Exception as e:
-        print(f"Error al obtener la fecha más reciente en {prefijo_folder}: {e}")
+        logger.info(f"Error al obtener la fecha más reciente en {prefijo_folder}: {e}")
         raise
 
 def procesar_archivo_json(lista):
@@ -73,7 +90,7 @@ def leer_json(nombre_remoto_json):
         data = json.loads(contenido)
         return data
     except Exception as e:
-        print(f"No se pudo leer el JSON desde el bucket: {e}")
+        logger.info(f"No se pudo leer el JSON desde el bucket: {e}")
         raise
 
 # -----------------------------------------------------
@@ -107,7 +124,7 @@ def cargar_json_a_database(data_filtrada):
 
     # comenzamos a insetar los campos del json en la base de datos
     for i,item in enumerate(data_filtrada):
-        print(f"[INFO] Procesadas {i}/{len(data_filtrada)} sentencias -> {i}")
+        logger.info(f"[INFO] Procesadas {i}/{len(data_filtrada)} sentencias -> {i}")
 
         # Insertar en sentencias_y_autos
         cur.execute("""
@@ -200,12 +217,12 @@ def enrutar_pdfs():
     # Regex para extraer el ID del nombre del archivo
     pattern = r"id=(\d+)\.pdf$"
 
-    print("Empezando recorrido")
+    logger.info("Empezando recorrido")
     # Recorremos todos los PDFs con tqdm
     for i, blob in enumerate(tqdm(blobs, desc="Procesando archivos PDF", unit="archivo")):
         filename = blob.name  # Ej: descargas_pdf/Resolucion_S_N_2024-01-04...,id=1006968812.pdf
         match = re.search(pattern, filename)
-        print(f"Nombre de archivo {filename}")
+        logger.info(f"Nombre de archivo {filename}")
 
         if match:
             ndetalle = match.group(1)
@@ -236,10 +253,17 @@ def enrutar_pdfs():
 
 def main():
 
+    logger.info("------------------ Empezando guardado de datos ---------------")
     # 1. cargar jsons a base de datos
+    logger.info("1.1. Empezando filtrado para cargar json en base de datos ")
     json_filtrados = filtrar_precargado_json()
+    logger.info("1.2. Empezando carga de json a base de datos")
     cargar_json_a_database(json_filtrados)
 
     # 2. cargar ruta del bucket al campo "url" de la base de datos.
+    logger.info("2. Empezando enrutado de pdfs en base de datos.")
     enrutar_pdfs()
 
+
+if __name__=='__main__':
+    main()
