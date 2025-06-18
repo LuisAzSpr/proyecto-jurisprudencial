@@ -73,6 +73,62 @@ def obtener_filtros():
         "nombre_juez": sorted(lista_juez)
     }
 
+@app.get("/statistics")
+def estadisticas(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    lista_jueces: Optional[List[str]] = Query(None)
+):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    filtros_where = []
+    params: List = []
+
+    if fecha_desde:
+        filtros_where.append("s.fecha_resolucion >= %s")
+        params.append(fecha_desde)
+    if fecha_hasta:
+        filtros_where.append("s.fecha_resolucion <= %s")
+        params.append(fecha_hasta)
+    if lista_jueces:
+        filtros_where.append("j.nombre_juez = ANY(%s)")
+        params.append(lista_jueces)
+
+    from_clause = """
+        sentencias_y_autos s
+        LEFT JOIN sentencias_jueces sj ON sj.ndetalle = s.ndetalle
+        LEFT JOIN jueces j ON j.codigo = sj.codigo
+    """
+
+    where_sql = ""
+    if filtros_where:
+        where_sql = "WHERE " + " AND ".join(filtros_where)
+
+    select_query = f"""
+        SELECT
+            j.nombre_juez,
+            COUNT(*) AS total,
+            COUNT(*) - COUNT(s.url) AS nulos
+        FROM 
+            {from_clause}
+            {where_sql}
+        GROUP BY
+            j.codigo, j.nombre_juez
+        ORDER BY
+            j.nombre_juez ASC;
+    """
+
+    cur.execute(select_query, tuple(params))
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return [
+        {"juez": row[0], "total": row[1], "nulos": row[2]}
+        for row in filas
+    ]
+
 
 @app.get("/search")
 def buscar_sentencias(
