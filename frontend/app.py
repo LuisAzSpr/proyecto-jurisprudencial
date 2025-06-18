@@ -123,11 +123,11 @@ def show_search_results(resultado, page, limit):
     with col_prev:
         if st.button("⬅ Página anterior") and page > 1:
             st.session_state.pagina_actual -= 1
-            st.experimental_rerun()
+            st.rerun()
     with col_next:
         if st.button("Página siguiente ➡") and page < pages:
             st.session_state.pagina_actual += 1
-            st.experimental_rerun()
+            st.rerun()
 
 # -----------------------
 # Estadísticas
