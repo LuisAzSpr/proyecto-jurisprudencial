@@ -165,6 +165,7 @@ def buscar_sentencias(
     from_clause = "sentencias_y_autos s LEFT JOIN sentencias_jueces sj ON sj.ndetalle = s.ndetalle LEFT JOIN jueces j ON j.codigo = sj.codigo"
 
     where_sql = ""
+    filtros_where.append("s.url IS NOT NULL")
     if filtros_where:
         where_sql = "WHERE " + " AND ".join(filtros_where)
 
