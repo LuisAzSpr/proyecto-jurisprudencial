@@ -42,7 +42,7 @@ def cargar_filtros():
 # -----------------------
 # Parámetros de consulta
 # -----------------------
-def build_params(fecha_desde, fecha_hasta, sel_organo, sel_juez, solo_sentencias, extra=None):
+def build_params(fecha_desde, fecha_hasta, sel_organo, solo_sentencias, extra=None):
     """Construye el dict de parámetros para las peticiones al backend."""
     params = {
         "fecha_desde": fecha_desde.isoformat(),
@@ -50,14 +50,10 @@ def build_params(fecha_desde, fecha_hasta, sel_organo, sel_juez, solo_sentencias
     }
     if sel_organo and sel_organo != "Todos":
         params["organo_detalle"] = sel_organo
-    if sel_juez and sel_juez != "Todos":
-        # Para búsqueda de PDFs (search) usa nombre_juez, para stats lista_jueces
-        params_key = "lista_jueces" if extra and "/statistics" in extra.get("endpoint", "") else "nombre_juez"
-        params[params_key] = [sel_juez]
     if solo_sentencias:
         params["clasificacion_fundada"] = True
     if extra:
-        params.update({k: v for k, v in extra.items() if k != "endpoint"})
+        params.update(extra)
     return params
 
 # -----------------------
@@ -89,9 +85,13 @@ def display_search_page():
     offset = (page - 1) * limit
 
     params = build_params(
-        fecha_desde, fecha_hasta, sel_organo, sel_juez, solo_sentencias,
-        extra={"limit": limit, "offset": offset, "endpoint": "/search"}
+        fecha_desde, fecha_hasta, sel_organo, solo_sentencias,
+        extra={"limit": limit, "offset": offset}
     )
+    # añadir filtro de juez en búsqueda
+    if sel_juez and sel_juez != "Todos":
+        params["nombre_juez"] = sel_juez
+
     resultado = fetch_data("/search", params)
     show_search_results(resultado, page, limit)
 
@@ -133,23 +133,20 @@ def show_search_results(resultado, page, limit):
 # Estadísticas
 # -----------------------
 def display_stats_page():
-    """Muestra la sección de estadísticas de URLs."""
+    """Muestra la sección de estadísticas de URLs para la lista fija de jueces."""
     st.header("📊 Estadísticas de URLs nulas por Juez")
 
-    # Usa lista fija
-    opts_juez = ["Todos"] + JUECES_LIST
-
+    # Controles de fecha únicamente
     col1, col2 = st.columns(2)
     with col1:
         fecha_desde = st.date_input("Desde", key="stats_desde")
     with col2:
         fecha_hasta = st.date_input("Hasta", key="stats_hasta")
-    sel_juez = st.selectbox("Filtrar por Juez", opts_juez)
 
     if st.button("Generar estadísticas"):
         params = build_params(
-            fecha_desde, fecha_hasta, None, sel_juez, False,
-            extra={"endpoint": "/statistics"}
+            fecha_desde, fecha_hasta, None, False,
+            extra={"lista_jueces": JUECES_LIST}
         )
         stats = fetch_data("/statistics", params)
         render_stats(stats)
