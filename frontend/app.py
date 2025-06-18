@@ -8,6 +8,21 @@ import pandas as pd
 load_dotenv()
 API_BASE_URL = os.getenv("URL_API")
 
+# Lista fija de jueces para estadísticas
+JUECES_LIST = [
+    "ARÉVALO VELA, JAVIER",
+    "ESPINOZA MONTOYA, CECILIA LEONOR",
+    "JIMENEZ LA ROSA, PERU VALENTIN",
+    "ALVARADO PALACIOS, EDITH IRMA",
+    "CARDENAS SALCEDO, ANGELA GRACIELA",
+    "DE LA ROSA BEDRIÑANA, MARIEM VICKY",
+    "YALAN LEAL, JACKELINE",
+    "CASTILLO LEON, VICTOR ANTONIO",
+    "CARLOS CASAS, ELISA VILMA",
+    "JIMENEZ LA ROSA, PERU VALENTIN",
+    "ATO ALVARADO, MARTIN EDUARDO"
+]
+
 st.set_page_config(layout="wide")
 
 # -----------------------
@@ -36,17 +51,20 @@ def build_params(fecha_desde, fecha_hasta, sel_organo, sel_juez, solo_sentencias
     if sel_organo and sel_organo != "Todos":
         params["organo_detalle"] = sel_organo
     if sel_juez and sel_juez != "Todos":
-        params["lista_jueces"] = [sel_juez]  # backend espera lista_jueces
+        # Para búsqueda de PDFs (search) usa nombre_juez, para stats lista_jueces
+        params_key = "lista_jueces" if extra and "/statistics" in extra.get("endpoint", "") else "nombre_juez"
+        params[params_key] = [sel_juez]
     if solo_sentencias:
         params["clasificacion_fundada"] = True
     if extra:
-        params.update(extra)
+        params.update({k: v for k, v in extra.items() if k != "endpoint"})
     return params
 
 # -----------------------
 # Páginas de visualización
 # -----------------------
 def display_search_page():
+    """Muestra la interfaz de búsqueda de PDFs."""
     filtros = cargar_filtros()
     opts_organo = ["Todos"] + filtros.get("organo_detalle", [])
     opts_juez = ["Todos"] + filtros.get("nombre_juez", [])
@@ -70,13 +88,16 @@ def display_search_page():
     limit = 100
     offset = (page - 1) * limit
 
-    params = build_params(fecha_desde, fecha_hasta, sel_organo, sel_juez, solo_sentencias,
-                          extra={"limit": limit, "offset": offset})
+    params = build_params(
+        fecha_desde, fecha_hasta, sel_organo, sel_juez, solo_sentencias,
+        extra={"limit": limit, "offset": offset, "endpoint": "/search"}
+    )
     resultado = fetch_data("/search", params)
     show_search_results(resultado, page, limit)
 
 
 def show_search_results(resultado, page, limit):
+    """Renderiza los resultados de búsqueda con paginación."""
     total = resultado.get("total_count", 0)
     items = resultado.get("items", [])
 
@@ -112,9 +133,11 @@ def show_search_results(resultado, page, limit):
 # Estadísticas
 # -----------------------
 def display_stats_page():
+    """Muestra la sección de estadísticas de URLs."""
     st.header("📊 Estadísticas de URLs nulas por Juez")
-    filtros = cargar_filtros()
-    opts_juez = ["Todos"] + filtros.get("nombre_juez", [])
+
+    # Usa lista fija
+    opts_juez = ["Todos"] + JUECES_LIST
 
     col1, col2 = st.columns(2)
     with col1:
@@ -124,13 +147,16 @@ def display_stats_page():
     sel_juez = st.selectbox("Filtrar por Juez", opts_juez)
 
     if st.button("Generar estadísticas"):
-        params = build_params(fecha_desde, fecha_hasta, None, sel_juez, False)
+        params = build_params(
+            fecha_desde, fecha_hasta, None, sel_juez, False,
+            extra={"endpoint": "/statistics"}
+        )
         stats = fetch_data("/statistics", params)
         render_stats(stats)
 
 
 def render_stats(stats):
-    # stats es lista de dict con 'juez', 'total', 'nulos'
+    """Dibuja tabla y gráfico de estadísticas."""
     if not stats:
         st.warning("No hay datos de estadísticas.")
         return
@@ -139,7 +165,11 @@ def render_stats(stats):
     df["null_percentage"] = (df["nulos"] / df["total"] * 100).round(2)
 
     st.subheader("Tabla de estadísticas")
-    st.dataframe(df.rename(columns={"juez": "Juez", "total": "Total", "nulos": "Nulos", "null_percentage": "% Nulos"}))
+    st.dataframe(
+        df.rename(columns={
+            "juez": "Juez", "total": "Total", "nulos": "Nulos", "null_percentage": "% Nulos"
+        })
+    )
 
     st.subheader("% de URLs nulas por juez")
     st.bar_chart(df.set_index("juez")["null_percentage"])
@@ -148,6 +178,7 @@ def render_stats(stats):
 # Helpers
 # -----------------------
 def fetch_data(endpoint, params):
+    """Petición GET al backend y retorno de JSON."""
     try:
         resp = requests.get(f"{API_BASE_URL}{endpoint}", params=params)
         resp.raise_for_status()
@@ -158,6 +189,7 @@ def fetch_data(endpoint, params):
 
 
 def build_download_link(ndetalle):
+    """Genera enlace firmado para descargar PDF."""
     try:
         resp = requests.get(f"{API_BASE_URL}/descargar/{ndetalle}")
         resp.raise_for_status()
@@ -189,4 +221,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
