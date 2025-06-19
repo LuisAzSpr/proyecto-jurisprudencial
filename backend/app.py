@@ -55,7 +55,10 @@ def obtener_filtros():
     cur = conn.cursor()
 
     cur.execute("SELECT DISTINCT organo_detalle FROM sentencias_y_autos WHERE organo_detalle IS NOT NULL;")
-    lista_organo = [r[0] for r in cur.fetchall()]
+    lista_organo = [
+        "SEGUNDA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA",
+        "CUARTA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA"
+    ]
 
     cur.execute("""
         SELECT DISTINCT j.nombre_juez

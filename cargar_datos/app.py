@@ -209,6 +209,8 @@ def cargar_json_a_database(data_filtrada):
 # -------------------------------------------------------------------------------------
 
 def enrutar_pdfs():
+
+    # Conexion a la base de datos y extraccion de los archivos pdfs
     conn = get_db_connection()
     cur = conn.cursor()
     prefix = "descargas_pdf/"
@@ -217,29 +219,39 @@ def enrutar_pdfs():
     # Regex para extraer el ID del nombre del archivo
     pattern = r"id=(\d+)\.pdf$"
 
-    logger.info("Empezando recorrido")
-    # Recorremos todos los PDFs con tqdm
-    for i, blob in enumerate(tqdm(blobs, desc="Procesando archivos PDF", unit="archivo")):
-        filename = blob.name  # Ej: descargas_pdf/Resolucion_S_N_2024-01-04...,id=1006968812.pdf
-        match = re.search(pattern, filename)
-        #logger.info(f"Nombre de archivo {filename}")
-
+    # Listamos los ndetalles que se encuentra en el bucket
+    ndetalles_bucket = {}
+    for blob in blobs:
+        match = re.search(pattern, blob.name)
         if match:
-            ndetalle = match.group(1)
+            ndetalles_bucket[match.group(1)] = blob.name
 
-            # Verificar si el registro existe y aún no tiene URL
-            cur.execute("SELECT url FROM sentencias_y_autos WHERE ndetalle = %s", (ndetalle,))
-            result = cur.fetchone()
+    # Extraemos los ndetalles que posean valores nulos en la "url"
+    cur.execute('''
+        SELECT
+            ndetalle
+        FROM sentencias_y_autos
+        WHERE url IS NULL;
+    ''')
 
-            if result is not None and result[0] is not None:
+    ndetalles_faltantes = set([x[0] for  x in cur.fetchall()])
 
-                # Actualizar la fila
-                cur.execute(
-                    "UPDATE sentencias_y_autos SET url = %s WHERE ndetalle = %s",
-                    (filename, ndetalle)
-                )
+    # Filtramos solo los ndetalles que se encuentran en ambos
+    ndetalles_a_subir = list(ndetalles_faltantes & set(ndetalles_bucket.keys()))
 
-        if i % 100 == 0:
+    # Para cada ndetalle a subir
+    for i,ndet in enumerate(ndetalles_a_subir):
+        filename = ndetalles_bucket[ndet] # obtenemos el nombre en el bucket
+        print(f"-> {filename} : {i} / {len(ndetalles_a_subir)}")
+        # actualizamos
+        cur.execute(
+            "UPDATE sentencias_y_autos SET url = %s WHERE ndetalle = %s",
+            (filename, ndet)
+        )
+
+        # cada 40 realizamos un commit y mostramos el progreso
+        if i % 40 == 0:
+            print(f"Progreso: {i}/{len(ndetalles_a_subir)}")
             conn.commit()
 
     # Guardar cambios finales
