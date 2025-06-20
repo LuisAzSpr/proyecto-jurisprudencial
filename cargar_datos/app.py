@@ -38,7 +38,7 @@ def get_db_connection():
         port=os.getenv("DB-PORT"),
         dbname=os.getenv("DB-NAME"),
         user=os.getenv("USERNAME-DB"),
-        password=os.getenv("PASSWORD-DB")
+        password=os.getenv("PASSWORD-DB"),
         options='-c statement_timeout=10000'  # 10 segundos
     )
 
