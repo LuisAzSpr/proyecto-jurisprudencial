@@ -22,7 +22,8 @@ def get_db_connection():
         port=os.getenv("DB-PORT"),
         dbname=os.getenv("DB-NAME"),
         user=os.getenv("USERNAME-DB"),
-        password=os.getenv("PASSWORD-DB")
+        password=os.getenv("PASSWORD-DB"),
+        options='-c statement_timeout=10000'  # 10 segundos
     )
 
 @app.get("/descargar/{ndetalle}")
@@ -54,7 +55,7 @@ def obtener_filtros():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT DISTINCT organo_detalle FROM sentencias_y_autos WHERE organo_detalle IS NOT NULL;")
+    #cur.execute("SELECT DISTINCT organo_detalle FROM sentencias_y_autos WHERE organo_detalle IS NOT NULL;")
     lista_organo = [
         "SEGUNDA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA",
         "CUARTA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA"
