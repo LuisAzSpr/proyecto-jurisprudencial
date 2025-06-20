@@ -39,6 +39,7 @@ def get_db_connection():
         dbname=os.getenv("DB-NAME"),
         user=os.getenv("USERNAME-DB"),
         password=os.getenv("PASSWORD-DB")
+        options='-c statement_timeout=10000'  # 10 segundos
     )
 
 credentials = service_account.Credentials.from_service_account_file('credenciales.json')
