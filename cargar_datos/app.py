@@ -291,7 +291,7 @@ def clasificar_archivos():
             logger.info(f"Procesando {ndetalle}...")
 
             blob = bucket.blob(url)
-            pdf_bytes = blob.download_as_bytes()
+            pdf_bytes = blob.download_as_bytes(timeout=15)  # <= AÑADE timeout
 
             texto = extraer_texto_pdf(pdf_bytes)
             resultado = clasificar_archivo_pdf(texto, ndetalle)
@@ -309,6 +309,7 @@ def clasificar_archivos():
         except Exception as e:
             logger.error(f"Error procesando {ndetalle}: {e}")
 
+    conn.commit()
     cur.close()
     conn.close()
 
