@@ -253,6 +253,7 @@ def enrutar_pdfs():
             (filename, ndet)
         )
         conn.commit()
+        logger.info("Comiteado ----")
 
         # cada 40 realizamos un commit y mostramos el progreso
         if i % 40 == 0:
