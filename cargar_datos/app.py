@@ -7,6 +7,7 @@ import json
 import re
 from tqdm import tqdm
 import logging
+import time
 
 load_dotenv()
 
@@ -241,6 +242,7 @@ def enrutar_pdfs():
 
     # Para cada ndetalle a subir
     for i,ndet in enumerate(ndetalles_a_subir):
+        time.sleep(0.1)
         filename = ndetalles_bucket[ndet] # obtenemos el nombre en el bucket
         print(f"-> {filename} : {i} / {len(ndetalles_a_subir)}")
         # actualizamos
@@ -251,6 +253,7 @@ def enrutar_pdfs():
 
         # cada 40 realizamos un commit y mostramos el progreso
         if i % 40 == 0:
+            time.sleep(1)
             print(f"Progreso: {i}/{len(ndetalles_a_subir)}")
             conn.commit()
 
