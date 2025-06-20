@@ -8,8 +8,8 @@ import re
 from tqdm import tqdm
 import logging
 import time
-from cargar_datos.clasificacion import extraer_texto_pdf
-from cargar_datos.clasificacion import clasificar_archivo_pdf
+from clasificacion import extraer_texto_pdf
+from clasificacion import clasificar_archivo_pdf
 
 load_dotenv()
 
