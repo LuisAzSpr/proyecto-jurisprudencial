@@ -11,6 +11,12 @@ load_dotenv()
 
 app = FastAPI()
 
+
+LISTA_ORGANO_PERMITIDOS = [
+    "SEGUNDA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA",
+    "CUARTA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA"
+]
+
 # Configuración de Google Cloud Storage
 credentials = service_account.Credentials.from_service_account_file('credenciales.json')
 storage_client = storage.Client(credentials=credentials)
@@ -56,10 +62,6 @@ def obtener_filtros():
     cur = conn.cursor()
 
     #cur.execute("SELECT DISTINCT organo_detalle FROM sentencias_y_autos WHERE organo_detalle IS NOT NULL;")
-    lista_organo = [
-        "SEGUNDA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA",
-        "CUARTA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA"
-    ]
 
     cur.execute("""
         SELECT DISTINCT j.nombre_juez
@@ -151,8 +153,10 @@ def buscar_sentencias(
     params: List = []
 
     if organo_detalle:
-        filtros_where.append("s.organo_detalle = %s")
-        params.append(organo_detalle)
+        if organo_detalle not in LISTA_ORGANO_PERMITIDOS:
+            raise HTTPException(status_code=400, detail="Órgano no permitido.")
+        filtros_where.append("s.organo_detalle = ANY(%s)")
+        params.append(LISTA_ORGANO_PERMITIDOS)
     if nombre_juez:
         filtros_where.append("j.nombre_juez = %s")
         params.append(nombre_juez)
