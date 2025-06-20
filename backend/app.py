@@ -75,7 +75,7 @@ def obtener_filtros():
     cur.close()
     conn.close()
     return {
-        "organo_detalle": sorted(lista_organo),
+        "organo_detalle": sorted(LISTA_ORGANO_PERMITIDOS),
         "nombre_juez": sorted(lista_juez)
     }
 
