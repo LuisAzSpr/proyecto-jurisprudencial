@@ -8,6 +8,8 @@ import re
 from tqdm import tqdm
 import logging
 import time
+from cargar_datos.clasificacion import extraer_texto_pdf
+from cargar_datos.clasificacion import clasificar_archivo_pdf
 
 load_dotenv()
 
@@ -244,7 +246,7 @@ def enrutar_pdfs():
     for i,ndet in enumerate(ndetalles_a_subir):
         time.sleep(0.1)
         filename = ndetalles_bucket[ndet] # obtenemos el nombre en el bucket
-        print(f"-> {filename} : {i} / {len(ndetalles_a_subir)}")
+        logger.info(f"-> {filename} : {i} / {len(ndetalles_a_subir)}")
         # actualizamos
         cur.execute(
             "UPDATE sentencias_y_autos SET url = %s WHERE ndetalle = %s",
@@ -254,7 +256,7 @@ def enrutar_pdfs():
         # cada 40 realizamos un commit y mostramos el progreso
         if i % 40 == 0:
             time.sleep(1)
-            print(f"Progreso: {i}/{len(ndetalles_a_subir)}")
+            logger.info(f"Progreso: {i}/{len(ndetalles_a_subir)}")
             conn.commit()
 
     # Guardar cambios finales
@@ -262,6 +264,53 @@ def enrutar_pdfs():
     cur.close()
     conn.close()
 
+def clasificar_archivos():
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Extraemos los ndetalles que posean valores nulos en la "clasificacion" pero
+    # que si tengan un pdf asociado en la "url"
+    cur.execute('''
+        SELECT
+            ndetalle,
+            url
+        FROM sentencias_y_autos
+        WHERE
+            url IS NOT NULL
+            AND
+            clasificacion IS NULL
+    ''')
+
+    filas = cur.fetchall()
+
+    contador = 0
+    for ndetalle, url in filas:
+        contador += 1
+        try:
+            logger.info(f"Procesando {ndetalle}...")
+
+            blob = bucket.blob(url)
+            pdf_bytes = blob.download_as_bytes()
+
+            texto = extraer_texto_pdf(pdf_bytes)
+            resultado = clasificar_archivo_pdf(texto, ndetalle)
+            clasificacion = resultado.get('clase', 'desconocido')
+
+            cur.execute(
+                "UPDATE sentencias_y_autos SET clasificacion = %s WHERE ndetalle = %s",
+                (clasificacion, ndetalle)
+            )
+            if contador%40==0:
+                logger.info(" Commit !! ")
+                conn.commit()
+            logger.info(f"{ndetalle} clasificado como {clasificacion} : {contador} / {len(filas)}")
+
+        except Exception as e:
+            logger.error(f"Error procesando {ndetalle}: {e}")
+
+    cur.close()
+    conn.close()
 
 # -------------------------------------------------------------------------------------
 
@@ -278,6 +327,10 @@ def main():
     # 2. cargar ruta del bucket al campo "url" de la base de datos.
     logger.info("2. Empezando enrutado de pdfs en base de datos.")
     enrutar_pdfs()
+
+    # 3. Clasificar los archivos pdfs
+    logger.info("3. Empezando clasificacion de los pdfs")
+    clasificar_archivos()
 
 
 if __name__=='__main__':

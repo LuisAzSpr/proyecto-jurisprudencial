@@ -6,6 +6,7 @@ WORKDIR /app
 
 # Copiar solo los archivos necesarios
 COPY app.py .
+COPY clasificacion.py .
 COPY requirements.txt .
 
 # Instalar dependencias
