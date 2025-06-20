@@ -55,7 +55,6 @@ def generar_url(ndetalle: str):
 
     return {"url": signed_url}
 
-
 @app.get("/filters")
 def obtener_filtros():
     conn = get_db_connection()
@@ -107,10 +106,14 @@ def estadisticas(
         LEFT JOIN jueces j ON j.codigo = sj.codigo
     """
 
+    # 👉 Aquí se añade el filtro por las salas permitidas
+    filtros_where.append("s.organo_detalle = ANY(%s)")
+    params.append(LISTA_ORGANO_PERMITIDOS)
+
     where_sql = ""
     if filtros_where:
         where_sql = "WHERE " + " AND ".join(filtros_where)
-
+    
     select_query = f"""
         SELECT
             j.nombre_juez,
