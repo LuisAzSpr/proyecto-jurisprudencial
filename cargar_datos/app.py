@@ -252,12 +252,12 @@ def enrutar_pdfs():
             "UPDATE sentencias_y_autos SET url = %s WHERE ndetalle = %s",
             (filename, ndet)
         )
+        conn.commit()
 
         # cada 40 realizamos un commit y mostramos el progreso
         if i % 40 == 0:
             time.sleep(1)
             logger.info(f"Progreso: {i}/{len(ndetalles_a_subir)}")
-            conn.commit()
 
     # Guardar cambios finales
     conn.commit()
@@ -291,9 +291,14 @@ def clasificar_archivos():
             logger.info(f"Procesando {ndetalle}...")
 
             blob = bucket.blob(url)
+            logger.info("Obteniendo pdf-bytes")
             pdf_bytes = blob.download_as_bytes(timeout=15)  # <= AÑADE timeout
 
+            logger.info(f"Obteniendo texto")
             texto = extraer_texto_pdf(pdf_bytes)
+
+            
+            logger.info(f"Empeando la clasificacion")
             resultado = clasificar_archivo_pdf(texto, ndetalle)
             clasificacion = resultado.get('clase', 'desconocido')
 
