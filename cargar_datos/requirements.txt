@@ -3,3 +3,5 @@ google-auth
 google-cloud-storage
 psycopg2-binary
 tqdm
+pdfplumber
+numpy
