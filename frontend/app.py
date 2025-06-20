@@ -28,7 +28,7 @@ st.set_page_config(layout="wide")
 # -----------------------
 # Carga de filtros
 # -----------------------
-@st.cache_data
+#@st.cache_data
 def cargar_filtros():
     """Obtiene los valores disponibles para filtros desde el backend."""
     try:
@@ -38,7 +38,6 @@ def cargar_filtros():
     except requests.RequestException as e:
         st.error(f"Error al cargar filtros: {e}")
         return {"organo_detalle": [], "nombre_juez": []}
-
 # -----------------------
 # Parámetros de consulta
 # -----------------------
@@ -128,7 +127,6 @@ def show_search_results(resultado, page, limit):
         if st.button("Página siguiente ➡") and page < pages:
             st.session_state.pagina_actual += 1
             st.rerun()
-
 # -----------------------
 # Estadísticas
 # -----------------------
@@ -150,8 +148,6 @@ def display_stats_page():
         )
         stats = fetch_data("/statistics", params)
         render_stats(stats)
-
-
 def render_stats(stats):
     """Dibuja tabla y gráfico de estadísticas."""
     if not stats:
@@ -183,8 +179,6 @@ def fetch_data(endpoint, params):
     except requests.RequestException as e:
         st.error(f"Error al obtener datos: {e}")
         return []
-
-
 def build_download_link(ndetalle):
     """Genera enlace firmado para descargar PDF."""
     try:
