@@ -158,6 +158,7 @@ def buscar_sentencias(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
     clasificacion_fundada: Optional[bool] = False,
+    materia: Optional[str] = Query(None),
     limit: int = 100,
     offset: int = 0
 ):
@@ -209,16 +210,40 @@ def buscar_sentencias(
     """
     cur.execute(select_query, tuple(params + [limit, offset]))
     filas = cur.fetchall()
-    items = [
-        {"ndetalle": row[0], "url": row[1], "clasificacion": row[2]}
-        for row in filas
-    ]
+    ndetalles_postgres = [row[0] for row in filas]
+
+    if materia:
+        client = PersistentClient(path="/app/chroma_db")
+        collection = client.get_collection("prueba2")
+
+        resultados = collection.get(
+            include=["ids", "metadatas"],
+            where={"materia": materia}
+        )
+        # Extraer ndetalles desde los ids
+        ndetalles_chroma = set()
+        for id_ in resultados["ids"]:
+            if id_.startswith("id_") and id_.endswith("_materia"):
+                nd = id_[3:-8]  # eliminar 'id_' y '_materia'
+                ndetalles_chroma.add(nd)
+
+        # Intersección entre ndetalles
+        ndetalles_filtrados = [row for row in filas if row[0] in ndetalles_chroma]
+    else:
+        ndetalles_filtrados = filas
+
+    filas = cur.fetchall()
 
     cur.close()
     conn.close()
 
+    items = [
+        {"ndetalle": row[0], "url": row[1], "clasificacion": row[2]}
+        for row in ndetalles_filtrados
+    ]
+
     return {
-        "total_count": total_count,
+        "total_count": len(ndetalles_filtrados),
         "items": items
     }
 
