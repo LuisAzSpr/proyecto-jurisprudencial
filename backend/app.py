@@ -6,6 +6,7 @@ from google.oauth2 import service_account
 import os
 from dotenv import load_dotenv
 from typing import Optional, List
+from chromadb import PersistentClient
 
 load_dotenv()
 
@@ -71,11 +72,22 @@ def obtener_filtros():
     """)
     lista_juez = [r[0] for r in cur.fetchall()]
 
+    client = PersistentClient(path="/app/chroma_db")  # ajusta el path si fuera necesario
+    collection = client.get_collection("prueba2")
+
+    # Obtener metadatos
+    resultados = collection.get(include=["metadatas"])
+    materias = set()
+    for meta in resultados["metadatas"]:
+        if meta and "materia" in meta:
+            materias.add(meta["materia"])
+
     cur.close()
     conn.close()
     return {
         "organo_detalle": sorted(LISTA_ORGANO_PERMITIDOS),
-        "nombre_juez": sorted(lista_juez)
+        "nombre_juez": sorted(lista_juez),
+        "materias": sorted(materias)
     }
 
 @app.get("/statistics")
@@ -109,11 +121,11 @@ def estadisticas(
     # 👉 Aquí se añade el filtro por las salas permitidas
     filtros_where.append("s.organo_detalle = ANY(%s)")
     params.append(LISTA_ORGANO_PERMITIDOS)
-
+    
     where_sql = ""
     if filtros_where:
         where_sql = "WHERE " + " AND ".join(filtros_where)
-    
+
     select_query = f"""
         SELECT
             j.nombre_juez,

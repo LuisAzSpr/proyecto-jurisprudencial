@@ -63,6 +63,7 @@ def display_search_page():
     filtros = cargar_filtros()
     opts_organo = ["Todos"] + filtros.get("organo_detalle", [])
     opts_juez = ["Todos"] + filtros.get("nombre_juez", [])
+    opts_materia = ["Todas"] + filtros.get("materias", [])
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -75,6 +76,9 @@ def display_search_page():
         sel_juez = st.selectbox("Nombre Juez", opts_juez)
 
     solo_sentencias = st.checkbox("Solo sentencias")
+    col5, _ = st.columns(2)
+    with col5:
+        sel_materia = st.selectbox("Materia", opts_materia)
 
     if st.button("Buscar"):
         st.session_state.pagina_actual = 1
@@ -90,6 +94,9 @@ def display_search_page():
     # añadir filtro de juez en búsqueda
     if sel_juez and sel_juez != "Todos":
         params["nombre_juez"] = sel_juez
+    
+    if sel_materia and sel_materia != "Todas":
+        params["materia"] = sel_materia
 
     resultado = fetch_data("/search", params)
     show_search_results(resultado, page, limit)
@@ -160,7 +167,7 @@ def render_stats(stats):
     st.subheader("Tabla de estadísticas")
     st.dataframe(
         df.rename(columns={
-            "juez": "Juez", "total": "Total", "nulos": "Nulos", "null_percentage": "% Nulos"
+            "juez": "Juez", "total": "Total", "nulos": "Faltan", "null_percentage": "% . Faltantes"
         })
     )
 
