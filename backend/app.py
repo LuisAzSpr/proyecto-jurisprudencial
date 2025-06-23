@@ -217,33 +217,75 @@ def buscar_sentencias(
         collection = client.get_collection("prueba2")
 
         resultados = collection.get(
-            include=[ "metadatas"],
+            include=["metadatas"],
             where={"materia": materia}
         )
-        # Extraer ndetalles desde los ids
+
+        # Extraer los ndetalles desde los IDs
         ndetalles_chroma = set()
         for id_ in resultados["ids"]:
             if id_.startswith("id_") and id_.endswith("_materia"):
-                nd = id_[3:-8]  # eliminar 'id_' y '_materia'
+                nd = id_[3:-8]  # elimina 'id_' y '_materia'
                 ndetalles_chroma.add(nd)
 
-        # Intersección entre ndetalles
-        ndetalles_filtrados = [row for row in filas if row[0] in ndetalles_chroma]
-    else:
-        ndetalles_filtrados = filas
+        if not ndetalles_chroma:
+            return {"total_count": 0, "items": []}
 
-    filas = cur.fetchall()
+        # Añadir filtro en SQL por los ndetalles obtenidos
+        filtros_where.append("s.ndetalle = ANY(%s)")
+        params.append(list(ndetalles_chroma))
+
+        # Volvemos a generar where_sql con el nuevo filtro
+        where_sql = "WHERE " + " AND ".join(filtros_where)
+
+        # Obtener total filtrado
+        count_query = f"""
+            SELECT COUNT(DISTINCT s.ndetalle)
+            FROM {from_clause}
+            {where_sql};
+        """
+        cur.execute(count_query, tuple(params))
+        total_count = cur.fetchone()[0]
+
+        # Obtener página actual
+        select_query = f"""
+            SELECT DISTINCT s.ndetalle, s.url, s.clasificacion, s.fecha_resolucion
+            FROM {from_clause}
+            {where_sql}
+            ORDER BY s.fecha_resolucion DESC
+            LIMIT %s OFFSET %s;
+        """
+        cur.execute(select_query, tuple(params + [limit, offset]))
+        filas = cur.fetchall()
+    else:
+        # No hay filtro por materia, usar la consulta original
+        select_query = f"""
+            SELECT DISTINCT s.ndetalle, s.url, s.clasificacion, s.fecha_resolucion
+            FROM {from_clause}
+            {where_sql}
+            ORDER BY s.fecha_resolucion DESC
+            LIMIT %s OFFSET %s;
+        """
+        cur.execute(select_query, tuple(params + [limit, offset]))
+        filas = cur.fetchall()
+
+        count_query = f"""
+            SELECT COUNT(DISTINCT s.ndetalle)
+            FROM {from_clause}
+            {where_sql};
+        """
+        cur.execute(count_query, tuple(params))
+        total_count = cur.fetchone()[0]
 
     cur.close()
     conn.close()
 
     items = [
         {"ndetalle": row[0], "url": row[1], "clasificacion": row[2]}
-        for row in ndetalles_filtrados
+        for row in filas
     ]
 
     return {
-        "total_count": len(ndetalles_filtrados),
+        "total_count": total_count,
         "items": items
     }
-
