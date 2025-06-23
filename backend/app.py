@@ -217,7 +217,7 @@ def buscar_sentencias(
         collection = client.get_collection("prueba2")
 
         resultados = collection.get(
-            include=["ids", "metadatas"],
+            include=[ "metadatas"],
             where={"materia": materia}
         )
         # Extraer ndetalles desde los ids
