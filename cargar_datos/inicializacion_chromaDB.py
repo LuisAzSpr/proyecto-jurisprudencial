@@ -6,6 +6,23 @@ from google.cloud import storage
 import pdfplumber
 import io
 import json
+import logging
+
+def configurar_logger():
+    logger = logging.getLogger()
+    if not logger.hasHandlers():  # Evitar agregar múltiples handlers
+        logging.basicConfig(
+            level=logging.INFO,  # Cambia esto a INFO para ocultar los DEBUG
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.StreamHandler(),  # Salida estándar
+                logging.FileHandler("logs.log", mode="a")  # Archivo de logs
+            ]
+        )
+    return logger
+
+logger = configurar_logger()
+
 
 credentials = service_account.Credentials.from_service_account_file('credenciales.json')
 storage_client = storage.Client(credentials=credentials)
