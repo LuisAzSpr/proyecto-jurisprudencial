@@ -33,7 +33,7 @@ cur.execute(
     WHERE
         clasificacion IN ('fundado','infundado')
         AND
-        organo_detalle in ['CUARTA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA','SEGUNDA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA']
+        organo_detalle in ('CUARTA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA','SEGUNDA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA')
     '''
 )
 total = cur.fetchall()
