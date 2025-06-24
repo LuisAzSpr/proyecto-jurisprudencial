@@ -72,7 +72,7 @@ def obtener_filtros():
     lista_juez = [r[0] for r in cur.fetchall()]
 
     client = PersistentClient(path="/app/chroma_db")  # ajusta el path si fuera necesario
-    collection = client.get_collection("prueba2")
+    collection = client.get_collection("materias_final_prueba")
 
     # Obtener metadatos
     resultados = collection.get(include=["metadatas"])
@@ -213,7 +213,7 @@ def buscar_sentencias(
 
     if materia:
         client = PersistentClient(path="/app/chroma_db")
-        collection = client.get_collection("prueba2")
+        collection = client.get_collection("materias_final_prueba")
 
         resultados = collection.get(
             include=["metadatas"],
