@@ -1,8 +1,12 @@
 python-dotenv
 google-auth
+google-auth-oauthlib
 google-cloud-storage
 psycopg2-binary
-tqdm
-pdfplumber
-numpy
+sentence-transformers
+transformers
+torch
 chromadb
+pdfplumber
+tqdm
+numpy
