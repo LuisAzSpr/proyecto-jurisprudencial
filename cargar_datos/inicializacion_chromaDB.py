@@ -43,9 +43,7 @@ cur.execute(
     '''
     SELECT
             ndetalle,
-            url,
-            clasificacion,
-            organo_detalle
+            url
     FROM sentencias_y_autos
     WHERE
         clasificacion IN ('fundado','infundado')
