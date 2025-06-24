@@ -79,7 +79,7 @@ for ndetalle,url in total:
         pdf_key = url,
         num_paginas = 1
     )
-    total[ndetalle] = pagina1[:5]
+    total_save[ndetalle] = pagina1[:5]
     if contador%50==0:
         with open("encabezado.json", "w", encoding="utf-8") as f:
             json.dump(total_save, f, ensure_ascii=False, indent=2)
@@ -87,4 +87,4 @@ for ndetalle,url in total:
     contador += 1
 
 with open("encabezado.json", "w", encoding="utf-8") as f:
-    json.dump(total, f, ensure_ascii=False, indent=2)
+    json.dump(total_save, f, ensure_ascii=False, indent=2)
