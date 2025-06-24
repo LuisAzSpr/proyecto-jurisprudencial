@@ -52,10 +52,6 @@ credentials = service_account.Credentials.from_service_account_file('credenciale
 storage_client = storage.Client(credentials=credentials)
 bucket = storage_client.bucket("automatizacion-casillero")
 
-client = PersistentClient(path="./chroma_db")
-collection = client.get_or_create_collection("prueba2")
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
 # -----------------------------------------------------
 
 
@@ -239,9 +235,6 @@ def cargar_json_a_database(data_filtrada):
 # ----------------- CARGAR RUTA BUCKET A URL EN BASE DE DATOS -------------------------
 # -------------------------------------------------------------------------------------
 
-def get_embedding(text): # obtener embeddings al partir del modelo definido
-    return model.encode(text, convert_to_tensor=True)
-
 
 def leer_paginas_pdf_como_lineas(pdf_key , num_paginas=1): # obtener las lineas de la primera pagina
     blob = bucket.blob(pdf_key)
@@ -367,8 +360,20 @@ def clasificar_archivos():
     cur.close()
     conn.close()
 
+
+# --------------------------------- Clasificar por materias -------------------------------
+# ----------------------------------------------------------------------------------------
+
+client = PersistentClient(path="./chroma_db")
+collection = client.get_or_create_collection("prueba2")
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+
+def get_embedding(text): # obtener embeddings al partir del modelo definido
+    return model.encode(text, convert_to_tensor=True)
+
+
 def clasificar_por_materias():
-    model = SentenceTransformer("all-MiniLM-L6-v2")
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -406,16 +411,19 @@ def clasificar_por_materias():
     embeddings = []
     metadatos = []
 
+    # para cada uno de los ndetalles filtrados
     for ndetalle in filtrados:
+
+        # calculamos la url y luego leemos la primera pagina
         url = ids_bd[ndetalle]
         lineas = leer_paginas_pdf_como_lineas(url,1)
 
-        # tomamos la mteria
+        # tomamos la materia
         materia = lineas[0][4]
         materia_limpia = materia.lower().replace('y otros','').replace('y otro','').strip()
 
         # tomamos la casacion para determinar si existe o no una queja
-        queja = 'queja' in lineas[0][3].lower()
+        queja = 'queja' in lineas[0][2].lower()
 
         # tomamos el embedding de la "consulta" de la materia
         embedding_consulta = np.array(get_embedding(materia_limpia)).tolist()
@@ -435,12 +443,17 @@ def clasificar_por_materias():
         embeddings.append(np.array(get_embedding(materia_limpia)))
         metadatos.append({'parte':'materia','materia':materia_clasificacion if not queja else 'queja'})
 
-
+        logger.info(f"Agregando clasificacion por materia a {url}.")
     
+    collection.add(
+        ids=ids,
+        documents=documents,
+        embeddings=embeddings,
+        metadatas=metadatos,
+    )
 
-    return 
+    logger.info("Terminado ...")
     
-
 # -------------------------------------------------------------------------------------
 
 
