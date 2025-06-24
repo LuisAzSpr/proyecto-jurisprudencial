@@ -55,7 +55,7 @@ cur.execute(
 )
 total = cur.fetchall()
 
-
+logger.info(f"Total = {len(total)}")
 
 def leer_paginas_pdf_como_lineas(pdf_key , num_paginas=1):
     blob = bucket.blob(pdf_key)
@@ -74,7 +74,7 @@ def leer_paginas_pdf_como_lineas(pdf_key , num_paginas=1):
     return resultado if resultado else None
 
 
-total = {}
+total_save = {}
 contador = 0
 for ndetalle,url in total:
     pagina1 = leer_paginas_pdf_como_lineas(
@@ -84,8 +84,8 @@ for ndetalle,url in total:
     total[ndetalle] = pagina1[:5]
     if contador%50==0:
         with open("encabezado.json", "w", encoding="utf-8") as f:
-            json.dump(total, f, ensure_ascii=False, indent=2)
-            print(f"{contador}/{len(total)}")
+            json.dump(total_save, f, ensure_ascii=False, indent=2)
+            logger.info(f"{contador}/{len(total)}")
     contador += 1
 
 with open("encabezado.json", "w", encoding="utf-8") as f:
