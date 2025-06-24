@@ -3,6 +3,9 @@ import numpy as np
 import re
 import pdfplumber
 import io
+import logging
+
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 PRIMERAS_PALABRAS = [
     'declarar', 'declararon', 'declare', 'DECLARARON', 'DECLARAR',
