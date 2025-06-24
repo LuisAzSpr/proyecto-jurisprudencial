@@ -1,18 +1,24 @@
+from sentence_transformers import SentenceTransformer
+from google.oauth2 import service_account
+from chromadb import PersistentClient
+from clasificacion import extraer_texto_pdf
+from clasificacion import clasificar_archivo_pdf
 from dotenv import load_dotenv
 from google.oauth2 import service_account
 from google.cloud import storage
-import psycopg2
-import os
+from tqdm import tqdm
 import json
 import re
-from tqdm import tqdm
 import logging
 import time
-from clasificacion import extraer_texto_pdf
-from clasificacion import clasificar_archivo_pdf
+import pdfplumber
+import numpy as np
+import os
+import psycopg2
+from statistics import mode
+import io
 
 load_dotenv()
-
 
 # --------------------- Conexiones --------------------------
 # -----------------------------------------------------
@@ -45,6 +51,10 @@ def get_db_connection():
 credentials = service_account.Credentials.from_service_account_file('credenciales.json')
 storage_client = storage.Client(credentials=credentials)
 bucket = storage_client.bucket("automatizacion-casillero")
+
+client = PersistentClient(path="./chroma_db")
+collection = client.get_or_create_collection("prueba2")
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # -----------------------------------------------------
 
@@ -96,6 +106,23 @@ def leer_json(nombre_remoto_json):
     except Exception as e:
         logger.info(f"No se pudo leer el JSON desde el bucket: {e}")
         raise
+
+def leer_paginas_pdf_como_lineas(pdf_key , num_paginas=1):
+    blob = bucket.blob(pdf_key)
+    buffer = io.BytesIO()
+    blob.download_to_file(buffer)
+    buffer.seek(0)
+
+    resultado = []
+    with pdfplumber.open(buffer) as pdf:
+        total_paginas = len(pdf.pages)
+        for i in range(min(num_paginas, total_paginas)):
+            texto = pdf.pages[i].extract_text()
+            lineas = texto.splitlines() if texto else []
+            resultado.append(lineas)
+
+    return resultado if resultado else None
+
 
 # -----------------------------------------------------
 
@@ -212,6 +239,26 @@ def cargar_json_a_database(data_filtrada):
 # ----------------- CARGAR RUTA BUCKET A URL EN BASE DE DATOS -------------------------
 # -------------------------------------------------------------------------------------
 
+def get_embedding(text): # obtener embeddings al partir del modelo definido
+    return model.encode(text, convert_to_tensor=True)
+
+
+def leer_paginas_pdf_como_lineas(pdf_key , num_paginas=1): # obtener las lineas de la primera pagina
+    blob = bucket.blob(pdf_key)
+    buffer = io.BytesIO()
+    blob.download_to_file(buffer)
+    buffer.seek(0)
+
+    resultado = []
+    with pdfplumber.open(buffer) as pdf:
+        total_paginas = len(pdf.pages)
+        for i in range(min(num_paginas, total_paginas)):
+            texto = pdf.pages[i].extract_text()
+            lineas = texto.splitlines() if texto else []
+            resultado.append(lineas)
+
+    return resultado if resultado else None
+
 def enrutar_pdfs():
 
     # Conexion a la base de datos y extraccion de los archivos pdfs
@@ -320,6 +367,80 @@ def clasificar_archivos():
     cur.close()
     conn.close()
 
+def clasificar_por_materias():
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Extraemos los ndetalles que sean fundados e infundados
+    cur.execute(
+        '''
+        SELECT
+                ndetalle,
+                url
+        FROM sentencias_y_autos
+        WHERE
+            clasificacion IN ('fundado','infundado')
+            AND
+            organo_detalle IN ('CUARTA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA','SEGUNDA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA')
+        '''
+    )
+
+    # tomamos los ids de la base de datos PostgreSQL
+    total = cur.fetchall()
+    ids_bd = {x[0]:x[1] for x in total}
+    logger.info(f"Ids en la base de datos PostgreSQL {len(ids_bd)}")
+
+    # tomamos los ids de la base de datos en ChromaDB
+    data_collection = collection.get()
+    exp = re.compile(r"id_(\d+)_materia")
+    ids_chroma = [exp.findall(x)[0] for x in data_collection['ids'] if exp.match(x)]
+    logger.info(f"Ids en la base de datos chromaDB {len(ids_chroma)}")
+
+    # filtramos los ids
+    filtrados = set(ids_bd.keys()) - set(ids_chroma)
+
+    # Inicializacion ...
+    ids = []
+    documents = []
+    embeddings = []
+    metadatos = []
+
+    for ndetalle in filtrados:
+        url = ids_bd[ndetalle]
+        lineas = leer_paginas_pdf_como_lineas(url,1)
+
+        # tomamos la mteria
+        materia = lineas[0][4]
+        materia_limpia = materia.lower().replace('y otros','').replace('y otro','').strip()
+
+        # tomamos la casacion para determinar si existe o no una queja
+        queja = 'queja' in lineas[0][3].lower()
+
+        # tomamos el embedding de la "consulta" de la materia
+        embedding_consulta = np.array(get_embedding(materia_limpia)).tolist()
+
+        # tomamos cuales son los 5 resultados que mas se parecen
+        resultado = collection.query(
+            query_embeddings=[embedding_consulta],
+            n_results=5 #
+        )
+
+        # tomamos la moda (el resultado que mas se repite)
+        materia_clasificacion = mode([x['materia'] for x in resultado['metadatas'][0]])
+
+        # agregamos los resultados
+        ids.append('id_'+ndetalle+'_materia')
+        documents.append(materia_limpia)
+        embeddings.append(np.array(get_embedding(materia_limpia)))
+        metadatos.append({'parte':'materia','materia':materia_clasificacion if not queja else 'queja'})
+
+
+    
+
+    return 
+    
+
 # -------------------------------------------------------------------------------------
 
 
@@ -336,9 +457,13 @@ def main():
     logger.info("2. Empezando enrutado de pdfs en base de datos.")
     enrutar_pdfs()
 
-    # 3. Clasificar los archivos pdfs
+    # 3. Clasificar por fundado e infundado los archivos pdfs
     logger.info("3. Empezando clasificacion de los pdfs")
     clasificar_archivos()
+
+    # 4. Clasificar por materias los archivos pdfs
+    logger.info("4. Empezando clasificacion de los pdfs")
+    clasificar_por_materias()
 
 
 if __name__=='__main__':

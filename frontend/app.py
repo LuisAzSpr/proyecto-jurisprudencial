@@ -155,6 +155,7 @@ def display_stats_page():
         )
         stats = fetch_data("/statistics", params)
         render_stats(stats)
+        
 def render_stats(stats):
     """Dibuja tabla y gráfico de estadísticas."""
     if not stats:
@@ -186,6 +187,7 @@ def fetch_data(endpoint, params):
     except requests.RequestException as e:
         st.error(f"Error al obtener datos: {e}")
         return []
+    
 def build_download_link(ndetalle):
     """Genera enlace firmado para descargar PDF."""
     try:
