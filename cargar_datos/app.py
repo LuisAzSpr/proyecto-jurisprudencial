@@ -435,7 +435,9 @@ def clasificar_por_materias():
         )
 
         # tomamos la moda (el resultado que mas se repite)
-        materia_clasificacion = mode([x['materia'] for x in resultado['metadatas'][0]])
+        lista = [x['materia'] for x in resultado['metadatas'][0] if 'queja' not in x['materia']]
+        materia_clasificacion  = lista[0] if len(lista)!=0 else 'queja'
+
 
         # agregamos los resultados
         ids.append('id_'+ndetalle+'_materia')
