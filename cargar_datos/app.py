@@ -477,8 +477,8 @@ def main():
     clasificar_archivos()
 
     # 4. Clasificar por materias los archivos pdfs
-    logger.info("4. Empezando clasificacion de los pdfs")
-    clasificar_por_materias()
+    #logger.info("4. Empezando clasificacion de los pdfs")
+    #clasificar_por_materias()
 
 
 if __name__=='__main__':
