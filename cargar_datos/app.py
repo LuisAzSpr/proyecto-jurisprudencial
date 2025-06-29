@@ -6,7 +6,6 @@ from clasificacion import clasificar_archivo_pdf
 from dotenv import load_dotenv
 from google.oauth2 import service_account
 from google.cloud import storage
-from tqdm import tqdm
 import json
 import re
 import logging
@@ -17,6 +16,7 @@ import os
 import psycopg2
 from statistics import mode
 import io
+import subprocess
 
 load_dotenv()
 
@@ -404,7 +404,7 @@ def clasificar_por_materias():
 
     # filtramos los ids
     filtrados = set(ids_bd.keys()) - set(ids_chroma)
-    
+    logger.info(f"Numero de ids filtrados {len(filtrados)}")
     # Inicializacion ...
     ids = []
     documents = []
@@ -412,8 +412,8 @@ def clasificar_por_materias():
     metadatos = []
 
     # para cada uno de los ndetalles filtrados
-    for ndetalle in filtrados:
-
+    for i,ndetalle in enumerate(filtrados):
+        
         # calculamos la url y luego leemos la primera pagina
         url = ids_bd[ndetalle]
         lineas = leer_paginas_pdf_como_lineas(url,1)
@@ -445,7 +445,7 @@ def clasificar_por_materias():
         embeddings.append(np.array(get_embedding(materia_limpia)))
         metadatos.append({'parte':'materia','materia':materia_clasificacion if not queja else 'queja'})
 
-        logger.info(f"Agregando clasificacion por materia a {url}.")
+        logger.info(f"Agregando clasificacion por materia a {url} -> {i}/{len(filtrados)}")
     
     collection.add(
         ids=ids,
@@ -460,7 +460,6 @@ def clasificar_por_materias():
 
 
 def main():
-
     logger.info("------------------ Empezando guardado de datos ---------------")
     # 1. cargar jsons a base de datos
     logger.info("1.1. Empezando filtrado para cargar json en base de datos ")
@@ -474,7 +473,7 @@ def main():
 
     # 3. Clasificar por fundado e infundado los archivos pdfs
     logger.info("3. Empezando clasificacion de los pdfs")
-    #clasificar_archivos()
+    clasificar_archivos()
 
     # 4. Clasificar por materias los archivos pdfs
     logger.info("4. Empezando clasificacion de los pdfs")
