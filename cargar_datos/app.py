@@ -404,7 +404,7 @@ def clasificar_por_materias():
 
     # filtramos los ids
     filtrados = set(ids_bd.keys()) - set(ids_chroma)
-
+    
     # Inicializacion ...
     ids = []
     documents = []
@@ -417,7 +417,7 @@ def clasificar_por_materias():
         # calculamos la url y luego leemos la primera pagina
         url = ids_bd[ndetalle]
         lineas = leer_paginas_pdf_como_lineas(url,1)
-
+    
         # tomamos la materia
         materia = lineas[0][4]
         materia_limpia = materia.lower().replace('y otros','').replace('y otro','').strip()
@@ -431,9 +431,9 @@ def clasificar_por_materias():
         # tomamos cuales son los 5 resultados que mas se parecen
         resultado = collection.query(
             query_embeddings=[embedding_consulta],
-            n_results=5 #
+            n_results=10 #
         )
-
+        
         # tomamos la moda (el resultado que mas se repite)
         lista = [x['materia'] for x in resultado['metadatas'][0] if 'queja' not in x['materia']]
         materia_clasificacion  = lista[0] if len(lista)!=0 else 'queja'
@@ -477,8 +477,8 @@ def main():
     clasificar_archivos()
 
     # 4. Clasificar por materias los archivos pdfs
-    #logger.info("4. Empezando clasificacion de los pdfs")
-    #clasificar_por_materias()
+    logger.info("4. Empezando clasificacion de los pdfs")
+    clasificar_por_materias()
 
 
 if __name__=='__main__':
