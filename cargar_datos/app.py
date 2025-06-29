@@ -364,7 +364,7 @@ def clasificar_archivos():
 # --------------------------------- Clasificar por materias -------------------------------
 # ----------------------------------------------------------------------------------------
 
-client = PersistentClient(path="./chroma_db")
+client = PersistentClient(path="/home/luisazanavega/chroma_db/chroma_db")
 collection = client.get_or_create_collection("materias_final_prueba")
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
