@@ -474,7 +474,7 @@ def main():
 
     # 3. Clasificar por fundado e infundado los archivos pdfs
     logger.info("3. Empezando clasificacion de los pdfs")
-    clasificar_archivos()
+    #clasificar_archivos()
 
     # 4. Clasificar por materias los archivos pdfs
     logger.info("4. Empezando clasificacion de los pdfs")
