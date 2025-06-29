@@ -447,7 +447,10 @@ def clasificar_por_materias():
         metadatos.append({'parte':'materia','materia':materia_clasificacion if not queja else 'queja'})
 
         logger.info(f"Agregando clasificacion por materia a {url} -> {i}/{len(filtrados)}")
-    
+
+    if len(ids)==0:
+        logger.info("No hay nada nuevo por hoy!!...")
+        return
     collection.add(
         ids=ids,
         documents=documents,
