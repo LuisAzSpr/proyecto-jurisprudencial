@@ -365,7 +365,7 @@ def clasificar_archivos():
 # ----------------------------------------------------------------------------------------
 
 client = PersistentClient(path="./chroma_db")
-collection = client.get_or_create_collection("prueba2")
+collection = client.get_or_create_collection("materias_final_prueba")
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
@@ -433,7 +433,7 @@ def clasificar_por_materias():
             query_embeddings=[embedding_consulta],
             n_results=10 #
         )
-        
+
         # tomamos la moda (el resultado que mas se repite)
         lista = [x['materia'] for x in resultado['metadatas'][0] if 'queja' not in x['materia']]
         materia_clasificacion  = lista[0] if len(lista)!=0 else 'queja'
