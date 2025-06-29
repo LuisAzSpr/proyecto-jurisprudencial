@@ -48,7 +48,8 @@ def get_db_connection():
         options='-c statement_timeout=10000'  # 10 segundos
     )
 
-credentials = service_account.Credentials.from_service_account_file('credenciales.json')
+ruta_credenciales = os.path.join(os.path.dirname(__file__), 'credenciales.json')
+credentials = service_account.Credentials.from_service_account_file(ruta_credenciales)
 storage_client = storage.Client(credentials=credentials)
 bucket = storage_client.bucket("automatizacion-casillero")
 
