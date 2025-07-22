@@ -18,7 +18,8 @@ LISTA_ORGANO_PERMITIDOS = [
     "1° SALA CONTENCIOSA ADMNISTRATIVA",
     "1° SALA PENAL SUPERIOR NACIONAL LIQUIDADORA TRANSITORIA",
     "1° SALA LABORAL PERMANENTE",
-    "PRIMERA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA"
+    "PRIMERA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA",
+    "TERCERA SALA DE DERECHO CONSTITUCIONAL Y SOCIAL TRANSITORIA"
 ]
 
 # Configuración de Google Cloud Storage
@@ -180,7 +181,7 @@ def buscar_sentencias(
         # Si NO se pasa uno específico, filtra por toda la lista permitida
         filtros_where.append("s.organo_detalle = ANY(%s)")
         params.append(LISTA_ORGANO_PERMITIDOS)
-        
+
     if nombre_juez:
         filtros_where.append("j.nombre_juez = %s")
         params.append(nombre_juez)
