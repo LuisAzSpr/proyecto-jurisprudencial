@@ -174,8 +174,13 @@ def buscar_sentencias(
     if organo_detalle:
         if organo_detalle not in LISTA_ORGANO_PERMITIDOS:
             raise HTTPException(status_code=400, detail="Órgano no permitido.")
+        filtros_where.append("s.organo_detalle = %s")
+        params.append(organo_detalle)
+    else:
+        # Si NO se pasa uno específico, filtra por toda la lista permitida
         filtros_where.append("s.organo_detalle = ANY(%s)")
         params.append(LISTA_ORGANO_PERMITIDOS)
+        
     if nombre_juez:
         filtros_where.append("j.nombre_juez = %s")
         params.append(nombre_juez)
